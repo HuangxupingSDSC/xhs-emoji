@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书表情包选择器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <script>
+        // Tailwind CSS Configuration
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        xhs: {
+                            red: '#FE2C55',
+                            lightRed: '#FFEBEF',
+                            pink: '#FFF1F3',
+                            gray: '#F7F7F7'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['PingFang SC', 'Helvetica Neue', 'Arial', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .emoji-grid {
+                display: grid;
+                /* Adjust grid item size and gap for more space */
+                grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+                gap: 12px; /* Reduced gap for a tighter look */
+            }
+            .emoji-item {
+                /* Increased padding */
+                @apply flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all duration-200 transform hover:bg-xhs-lightRed hover:scale-105;
+            }
+            /* Custom scrollbar for the emoji container */
+            #emoji-container::-webkit-scrollbar {
+                width: 6px;
+            }
+            #emoji-container::-webkit-scrollbar-track {
+                background: #f7f7f7;
+                border-radius: 10px;
+            }
+            #emoji-container::-webkit-scrollbar-thumb {
+                background: #FFEBEF;
+                border-radius: 10px;
+            }
+            #emoji-container::-webkit-scrollbar-thumb:hover {
+                background: #FE2C55;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
+        <!-- Header Section -->
+        <div class="text-center mb-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2.2rem)] font-bold text-xhs-red mb-2">小红书表情包选择器</h1>
+            <p class="text-gray-500 text-sm">点击右侧表情添加到左侧文本框，复制后可直接粘贴到小红书</p>
+        </div>
+        
+        <!-- Main Content: Left-Right Layout -->
+        <div class="flex flex-col md:flex-row gap-6">
+            
+            <!-- Left Panel: Text Editor and Controls -->
+            <div class="w-full md:w-1/2 bg-white rounded-xl shadow-sm p-4 md:p-6">
+                <textarea id="text-input" class="w-full h-56 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-xhs-red/30 resize-y transition-all" placeholder="点击右侧表情添加到这里..."></textarea>
+                
+                <div class="flex flex-wrap gap-3 mt-4">
+                    <!-- Added fixed width (w-32) and justify-center to prevent layout shift -->
+                    <button id="copy-btn" class="w-32 justify-center px-5 py-2.5 bg-xhs-red text-white rounded-full flex items-center gap-1.5 transition-all hover:bg-red-700 shadow-sm">
+                        <i class="fa fa-copy"></i> 复制内容
+                    </button>
+                    <button id="clear-btn" class="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-full flex items-center gap-1.5 transition-all hover:bg-gray-300">
+                        <i class="fa fa-trash"></i> 清空
+                    </button>
+                    <div class="px-5 py-2.5 bg-xhs-lightRed text-xhs-red rounded-full flex items-center gap-1.5">
+                        已添加: <span id="emoji-count" class="font-semibold">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Emoji Preview -->
+            <div class="w-full md:w-1/2 bg-white rounded-xl shadow-sm p-4 md:p-6 flex flex-col">
+                <div id="emoji-container" class="emoji-grid flex-grow h-[60vh] overflow-y-auto pr-2">
+                    <!-- Emojis will be dynamically inserted here -->
+                </div>
+                <div class="mt-4 text-center text-xs text-gray-400 border-t pt-3">
+                    <p>共 <span id="total-count">0</span> 个表情包 | 点击任意表情添加到文本框</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- START OF SCRIPT ---
+
+        // GitHub information for image paths
+        const githubUser = "HuangxupingSDSC";
+        const repoName = "xhs-emoji";
+        
+        // All emoji data in the correct Xiaohongshu format [NameR]
+        const emojis = [
+            { code: '[微笑R]', imgName: "微笑.png" }, { code: '[害羞R]', imgName: "害羞.png" },
+            { code: '[失望R]', imgName: "失望.png" }, { code: '[汗颜R]', imgName: "汗颜.png" },
+            { code: '[哇R]', imgName: "哇.png" }, { code: '[喝奶茶R]', imgName: "喝奶茶.png" },
+            { code: '[自拍R]', imgName: "自拍.png" }, { code: '[偷笑R]', imgName: "偷笑.png" },
+            { code: '[飞吻R]', imgName: "飞吻.png" }, { code: '[石化R]', imgName: "石化.png" },
+            { code: '[笑哭R]', imgName: "笑哭.png" }, { code: '[赞R]', imgName: "赞.png" },
+            { code: '[暗中观察R]', imgName: "暗中观察.png" }, { code: '[买爆R]', imgName: "买爆.png" },
+            { code: '[大笑R]', imgName: "大笑.png" }, { code: '[色色R]', imgName: "色色.png" },
+            { code: '[生气R]', imgName: "生气.png" }, { code: '[哭惹R]', imgName: "哭惹.png" },
+            { code: '[萌萌哒R]', imgName: "萌萌哒.png" }, { code: '[斜眼R]', imgName: "斜眼.png" },
+            { code: '[可怜R]', imgName: "可怜.png" }, { code: '[鄙视R]', imgName: "鄙视.png" },
+            { code: '[皱眉R]', imgName: "皱眉.png" }, { code: '[抓狂R]', imgName: "抓狂.png" },
+            { code: '[捂脸R]', imgName: "捂脸.png" }, { code: '[派对R]', imgName: "派对.png" },
+            { code: '[吧唧R]', imgName: "吧唧.png" }, { code: '[惊恐R]', imgName: "惊恐.png" },
+            { code: '[抠鼻R]', imgName: "抠鼻.png" }, { code: '[再见R]', imgName: "再见.png" },
+            { code: '[叹气R]', imgName: "叹气.png" }, { code: '[睡觉R]', imgName: "睡觉.png" },
+            { code: '[得意R]', imgName: "得意.png" }, { code: '[吃瓜R]', imgName: "吃瓜.png" },
+            { code: '[扶墙R]', imgName: "扶墙.png" }, { code: '[黑薯问号R]', imgName: "黑薯问号.png" },
+            { code: '[黄金薯R]', imgName: "黄金薯.png" }, { code: '[吐舌头R]', imgName: "吐舌头.png" },
+            { code: '[扯脸R]', imgName: "扯脸.png" }, { code: '[dogR]', imgName: "dog.png" }
+        ];
+
+        // DOM element references
+        const container = document.getElementById('emoji-container');
+        const emojiCountEl = document.getElementById('emoji-count');
+        const totalCountEl = document.getElementById('total-count');
+        const textInput = document.getElementById('text-input');
+        const copyBtn = document.getElementById('copy-btn');
+        const clearBtn = document.getElementById('clear-btn');
+
+        // Function to render all emojis into the container
+        function renderAllEmojis() {
+            container.innerHTML = ''; // Clear existing content
+            
+            emojis.forEach(emoji => {
+                const div = document.createElement('div');
+                div.className = 'emoji-item';
+                
+                // Construct the image URL from GitHub raw content
+                const imgUrl = `https://raw.githubusercontent.com/${githubUser}/${repoName}/main/${emoji.imgName}`;
+                
+                // Display only the image, no text label. Reduced size.
+                div.innerHTML = `<img src="${imgUrl}" alt="${emoji.code}" class="w-10 h-10 object-contain">`;
+                
+                // Add click event to add emoji code to textarea
+                div.onclick = () => {
+                    textInput.value += emoji.code + ' ';
+                    textInput.focus();
+                    updateEmojiCount();
+                    
+                    // Click animation feedback
+                    div.classList.add('scale-90', 'bg-xhs-pink');
+                    setTimeout(() => {
+                        div.classList.remove('scale-90', 'bg-xhs-pink');
+                    }, 200);
+                };
+                
+                container.appendChild(div);
+            });
+        }
+        
+        // Function to update the count of added emojis
+        function updateEmojiCount() {
+            // Use regex to find all emoji codes in the text
+            const count = (textInput.value.match(/\[[^\]]+R\]/g) || []).length;
+            emojiCountEl.textContent = count;
+        }
+        
+        // Function to copy textarea content to clipboard
+        function copyContent() {
+            if (!textInput.value) return; // Don't copy if empty
+            textInput.select();
+            document.execCommand('copy');
+            
+            // Visual feedback for successful copy
+            const originalHTML = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="fa fa-check"></i> 已复制!';
+            copyBtn.classList.add('bg-green-500');
+            copyBtn.classList.remove('bg-xhs-red');
+            
+            setTimeout(() => {
+                copyBtn.innerHTML = originalHTML;
+                copyBtn.classList.remove('bg-green-500');
+                copyBtn.classList.add('bg-xhs-red');
+            }, 2000);
+        }
+        
+        // Function to clear the textarea
+        function clearContent() {
+            textInput.value = '';
+            updateEmojiCount();
+            
+            // Visual feedback for clearing
+            textInput.classList.add('bg-xhs-pink', 'opacity-50');
+            setTimeout(() => {
+                textInput.classList.remove('bg-xhs-pink', 'opacity-50');
+            }, 300);
+        }
+
+        // --- Initialization ---
+
+        // Add event listeners
+        copyBtn.addEventListener('click', copyContent);
+        clearBtn.addEventListener('click', clearContent);
+        
+        // Initial render and count update
+        renderAllEmojis();
+        totalCountEl.textContent = emojis.length;
+        updateEmojiCount();
+        
+        // --- END OF SCRIPT ---
+    </script>
+</body>
+</html>
